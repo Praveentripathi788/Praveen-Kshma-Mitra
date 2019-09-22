@@ -1,0 +1,585 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # K nearest neighbors
+
+# KNN falls in the supervised learning family of algorithms. Informally, this means that we are given a labelled dataset consiting of training observations (x, y) and would like to capture the relationship between x and y. More formally, our goal is to learn a function h: X→Y so that given an unseen observation x, h(x) can confidently predict the corresponding output y.
+# 
+# In this module we will explore the inner workings of KNN, choosing the optimal K values and using KNN from scikit-learn.
+
+# ## Overview
+# 
+# 1. Read the problem statement.
+# 
+# 2. Get the dataset.
+# 
+# 3. Explore the dataset.
+# 
+# 4. Pre-processing of dataset.
+# 
+# 5. Visualization
+# 
+# 6. Transform the dataset for building machine learning model.
+# 
+# 7. Split data into train, test set.
+# 
+# 8. Build Model.
+# 
+# 9. Apply the model.
+# 
+# 10. Evaluate the model.
+# 
+# 11. Finding Optimal K value
+# 
+# 12. Repeat 7, 8, 9 steps.
+
+# ### Dataset
+# 
+# The data set we’ll be using is the Iris Flower Dataset which was first introduced in 1936 by the famous statistician Ronald Fisher and consists of 50 observations from each of three species of Iris (Iris setosa, Iris virginica and Iris versicolor). Four features were measured from each sample: the length and the width of the sepals and petals.
+# 
+# **Download the dataset here:**
+# - https://www.kaggle.com/uciml/iris
+# 
+# **Train the KNN algorithm to be able to distinguish the species from one another given the measurements of the 4 features.**
+
+# ## Load data
+
+# ### Question 1
+# 
+# Import the data set and print 10 random rows from the data set
+# 
+# Hint: use **sample()** function to get random rows
+
+# In[92]:
+
+
+import numpy as np
+import pandas as pd
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from scipy.stats import zscore
+from sklearn.metrics import accuracy_score
+from sklearn import metrics
+import seaborn as sns
+# To enable plotting graphs in Jupyter notebook
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+
+
+demo = pd.read_csv('iris (1).csv')
+demo.sample(10)
+
+
+# ## Data Pre-processing
+
+# ### Question 2 - Estimating missing values
+# 
+# Its not good to remove the records having missing values all the time. We may end up loosing some data points. So, we will have to see how to replace those missing values with some estimated values (median)
+
+# Calculate the number of missing values per column
+# - don't use loops
+
+# In[93]:
+
+
+demo.isnull().sum()
+
+
+# Fill missing values with median of that particular column
+
+# In[94]:
+
+
+p1 = demo.median()
+demo.fillna(demo.median(), inplace=True)
+demo.isnull().sum()
+
+
+# ### Question 3 - Dealing with categorical data
+# 
+# Change all the classes to numericals (0 to 2)
+# 
+# Hint: use **LabelEncoder()**
+
+# In[95]:
+
+
+demo.groupby(["Species"]).count()
+from sklearn.preprocessing import LabelEncoder
+class_label_encoder = LabelEncoder()
+demo['Species'] = class_label_encoder.fit_transform(demo.Species)
+demo.head()
+
+
+# ### Question 4
+# 
+# Observe the association of each independent variable with target variable and drop variables from feature set having correlation in range -0.1 to 0.1 with target variable.
+# 
+# Hint: use **corr()**
+
+# In[96]:
+
+
+demo.corr()
+demo = demo.drop(labels = 'SepalWidthCm',axis = 1)
+#demo.loc[:,demo.corr(['species']>=.1)|()]
+demo.head()
+
+
+# ### Question 5
+# 
+# Observe the independent variables variance and drop such variables having no variance or almost zero variance (variance < 0.1). They will be having almost no influence on the classification
+# 
+# Hint: use **var()**
+
+# In[120]:
+
+
+x=demo.var()
+demo.loc[:,demo.var()>0.1]
+demo.head()
+
+
+# ### Question 6
+# 
+# Plot the scatter matrix for all the variables.
+# 
+# Hint: use **pandas.plotting.scatter_matrix()**
+# 
+# you can also use pairplot()
+
+# In[98]:
+
+
+from matplotlib import pyplot as plt
+demo.head()
+sns.pairplot(demo,diag_kind = 'kde',hue = 'Species')
+
+
+# ## Split the dataset into training and test sets
+# 
+
+# ### Question 7
+# 
+# Split the dataset into training and test sets with 80-20 ratio
+# 
+# Hint: use **train_test_split()**
+
+# In[110]:
+
+
+demo = demo.drop(labels = 'Id', axis = 1)
+#test_size = 0.20 # taking 70:30 training and test set
+#seed = 7  # Random numbmer seeding for reapeatability of the code
+#demo_train, demo_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=seed)
+
+
+# In[111]:
+
+
+X = demo.drop(labels= "Species" , axis = 1)
+
+
+# In[112]:
+
+
+y = demo[["Species"]]
+
+
+# In[115]:
+
+
+y.head()
+from sklearn.preprocessing import LabelEncoder
+class_label_encoder = LabelEncoder()
+y['Species'] = class_label_encoder.fit_transform(y.Species)
+
+
+# In[117]:
+
+
+test_size = 0.20 # taking 80:30 training and test set
+seed = 7  # Random numbmer seeding for reapeatability of the code
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=seed)
+
+
+# In[118]:
+
+
+X_train.shape
+
+
+# In[119]:
+
+
+X_test.shape
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# ## Build Model
+
+# ### Question 8
+# 
+# Build the model and train and test on training and test sets respectively using **scikit-learn**.
+# 
+# Print the Accuracy of the model with different values of **k = 3, 5, 9**
+# 
+# Hint: For accuracy you can check **accuracy_score()** in scikit-learn
+
+# In[141]:
+
+
+NNH = KNeighborsClassifier()
+
+
+# In[145]:
+
+
+NNH.fit(X_train, y_train)
+
+
+# In[151]:
+
+
+cv_scores = []
+
+
+# In[152]:
+
+
+
+
+
+# In[153]:
+
+
+NNH = KNeighborsClassifier(k)
+NNH.fit(X_train, y_train)
+predicted_labels = NNH.predict(X_test)
+NNH.score(X_train, y_train)
+NNH.score(X_test, y_test)
+
+
+# In[168]:
+
+
+cv_scores =[]
+for k in [3,5,9]:
+    knn = KNeighborsClassifier(n_neighbors=k)
+    scores = cross_val_score(knn, X_train, y_train, cv=10, scoring='accuracy')
+    cv_scores.append(scores.mean())
+cv_scores
+
+
+# In[ ]:
+
+
+
+
+
+# ## Find optimal value of K
+
+# ### Question 9 - Finding Optimal value of k
+# 
+# - Run the KNN with no of neighbours to be 1, 3, 5 ... 19
+# - Find the **optimal number of neighbours** from the above list
+
+# In[158]:
+
+
+import warnings 
+warnings.filterwarnings('ignore')
+
+
+# In[159]:
+
+
+from sklearn.model_selection import cross_val_score
+
+
+# In[160]:
+
+
+maxK = int(np.sqrt(X_train.shape[0]))
+maxK
+
+
+# In[161]:
+
+
+myList = list(range(1,12))
+
+
+# In[162]:
+
+
+neighbors = list(filter(lambda x: x % 2 != 0, myList))
+neighbors
+
+
+# In[164]:
+
+
+cv_scores = []
+for k in neighbors:
+    knn = KNeighborsClassifier(n_neighbors=k)
+    scores = cross_val_score(knn, X_train, y_train, cv=10, scoring='accuracy')
+    cv_scores.append(scores.mean())
+cv_scores
+
+
+# In[166]:
+
+
+misError = [1 - x for x in cv_scores]
+optimal_k = neighbors[misError.index(min(misError))]
+print("The optimal number of neighbors is %d" % optimal_k)
+
+
+# In[ ]:
+
+
+
+
+
+# ## Plot accuracy
+
+# ### Question 10
+# 
+# Plot accuracy score vs k (with k value on X-axis) using matplotlib.
+
+# In[227]:
+
+
+cv_scores = pd.DataFrame([], columns = ['k' , 'accuracy']) 
+
+
+# In[216]:
+
+
+plt.bar(cv_scores.k,cv_scores.accuracy)
+plt.xticks(cv_scores.k)
+plt.xlabel('k')
+plt.title ("K vs accuracy")
+plt.ylabel('accuracy')
+plt.show()
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# # Breast cancer dataset
+
+# ## Read data
+
+# ### Question 1
+# Read the data given in bc2.csv file
+
+# In[172]:
+
+
+df = pd.read_csv('bc2.csv')
+df.head()
+
+
+# ## Data preprocessing
+
+# ### Question 2
+# Observe the no.of records in dataset and type of each column
+
+# In[176]:
+
+
+df.info()
+
+
+# In[ ]:
+
+
+
+
+
+# ### Question 3
+# Use summary statistics to check if missing values, outlier and encoding treament is necessary
+# 
+# Hint: use **describe()**
+
+# In[181]:
+
+
+df.describe().T
+
+
+# #### Check Missing Values
+
+# In[178]:
+
+
+df.isna()
+df.isna().sum()
+
+
+# ### Question 4
+# #### Check how many `?` are there in Bare Nuclei feature (they are also unknown or missing values). 
+
+# In[205]:
+
+
+df= df[df["Bare Nuclei"]== "?"]
+df["Bare Nuclei"].count()
+
+
+# #### Replace them with the 'top' value of the describe function of Bare Nuclei feature
+# 
+# Hint: give value of parameter include='all' in describe function
+
+# In[225]:
+
+
+toremove=df.describe(include='all')
+toploc= toremove.loc['top','Bare Nuclei']
+df['Bare Nuclei']=df['Bare Nuclei'].replace("?", toploc)
+df.head()
+
+
+# ### Question 5
+# #### Find the distribution of target variable (Class) 
+
+# In[210]:
+
+
+df.groupby(["Class"]).count()
+
+
+# #### Plot the distribution of target variable using histogram
+
+# In[213]:
+
+
+sns.distplot(df['Class'],kde=False,bins=7)
+
+
+# #### Convert the datatype of Bare Nuclei to `int`
+
+# In[226]:
+
+
+df.loc[:,"Bare Nuclei"] = pd.to_numeric(df.loc[:,"Bare Nuclei"])
+
+
+# ## Scatter plot
+
+# ### Question 6
+# Plot Scatter Matrix to understand the distribution of variables and check if any variables are collinear and drop one of them.
+
+# In[ ]:
+
+
+
+
+
+# ## Train test split
+
+# ### Question 7
+# #### Divide the dataset into feature set and target set
+
+# In[ ]:
+
+
+
+
+
+# #### Divide the Training and Test sets in 70:30 
+
+# In[ ]:
+
+
+
+
+
+# ## Scale the data
+
+# ### Question 8
+# Standardize the data
+# 
+# Hint: use **StandardScaler()**
+
+# In[ ]:
+
+
+
+
+
+# ## Build Model
+
+# ### Question 9
+# 
+# Build the model and train and test on training and test sets respectively using **scikit-learn**.
+# 
+# Print the Accuracy of the model with different values of **k = 3, 5, 9**
+# 
+# Hint: For accuracy you can check **accuracy_score()** in scikit-learn
+
+# In[ ]:
+
+
+
+
+
+# ## Find optimal value of K
+
+# ### Question 10
+# Finding Optimal value of k
+# 
+# - Run the KNN with no of neighbours to be 1, 3, 5 ... 19
+# - Find the **optimal number of neighbours** from the above list
+
+# In[ ]:
+
+
+
+
+
+# ## Plot accuracy
+
+# ### Question 11
+# 
+# Plot accuracy score vs k (with k value on X-axis) using matplotlib.
+
+# In[ ]:
+
+
+
+
